@@ -1,0 +1,17 @@
+# Generated HTML reports
+_system/Reports/
+
+# Runtime state — run logs, WinSCP XML, API raw output, JSON state
+_system/State/
+_system/Runlogs/
+_system/run-*.log
+
+# Claude Code session data
+_system/.claude/
+
+# Temp files written by editors / Claude Code
+*.tmp.*
+
+# OS
+.DS_Store
+Thumbs.db
