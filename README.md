@@ -100,29 +100,28 @@ You stop having to read raw chat logs line by line — the dashboard surfaces on
 ```
 D:\Dropbox\Gaming\UTLogs\WebChatLog\
 |
-|-- *.htm                       <- raw downloads from FTP (kept for reference)
+\-- *.htm                       <- raw downloads from FTP (kept for reference)
+
+D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\
+|-- config.ps1              <- editable settings (paths, model, schedule)
 |
-\-- _system\
-    |-- config.ps1              <- editable settings (paths, model, schedule)
-    |-- README.md               <- this file
-    |
-    |-- bin\
-    |   |-- UT99-ChatMonitor.ps1     <- the main worker script
-    |   |-- Setup.ps1                <- interactive first-time setup wizard
-    |   \-- Register-DailyTask.ps1   <- registers the scheduled task
-    |
-    |-- reports\
-    |   |-- chat-report-2026-05-01.html   <- one per day
-    |   |-- chat-report-2026-05-02.html
-    |   \-- latest.html                   <- copy of the newest report
-    |
-    |-- runlogs\
-    |   \-- run-2026-05-02-080000.log     <- one per script invocation
-    |
-    \-- state\
-        |-- last-run.json                  <- timestamp + counts of last run
-        |-- winscp-2026-05-02-080000.xml   <- WinSCP transfer log
-        \-- api-raw-*.txt                  <- raw API responses if JSON parse fails
+|-- bin\
+|   |-- UT99 ChatLog Analyzer.ps1   <- the main worker script
+|   |-- Setup.ps1                   <- interactive first-time setup wizard
+|   \-- Register-DailyTask.ps1      <- registers the scheduled task
+|
+|-- reports\
+|   |-- chat-report-2026-05-01.html   <- one per day
+|   |-- chat-report-2026-05-02.html
+|   \-- latest.html                   <- copy of the newest report
+|
+|-- runlogs\
+|   \-- run-2026-05-02-080000.log     <- one per script invocation
+|
+\-- state\
+    |-- last-run.json                  <- timestamp + counts of last run
+    |-- winscp-2026-05-02-080000.xml   <- WinSCP transfer log
+    \-- api-raw-*.txt                  <- raw API responses if JSON parse fails
 ```
 
 Reports, runlogs, and state are auto-created on first run. Old runlogs accumulate — see [Maintenance](#maintenance) for cleanup.
@@ -154,7 +153,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 | Setting | Default | Purpose |
 |---|---|---|
 | `LocalLogFolder` | `D:\Dropbox\Gaming\UTLogs\WebChatLog` | Where downloaded `.htm` files land. Same folder you've been using manually with WinSCP. |
-| `SystemFolder` | `D:\Dropbox\Gaming\UTLogs\WebChatLog\_system` | Where reports, runlogs, state, and scripts live. |
+| `SystemFolder` | `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system` | Where reports, runlogs, state, and scripts live. |
 | `LocalParsePattern` | `*.htm` | What file pattern the parser looks at locally. |
 
 ### Analysis
@@ -187,7 +186,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 
 ### Steps
 
-1. Copy the entire `UT99-ChatMonitor` folder you received into `D:\Dropbox\Gaming\UTLogs\WebChatLog\` and rename it to `_system`. The result should be `D:\Dropbox\Gaming\UTLogs\WebChatLog\_system\` containing `config.ps1`, `bin\`, etc.
+1. Place the `_system` folder at `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\`, containing `config.ps1`, `bin\`, etc.
 2. Open PowerShell 7 (search Start for "PowerShell" — black icon, not blue).
 3. Allow local script execution (one time, per user):
    ```powershell
@@ -195,25 +194,25 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
    ```
 4. Run the setup wizard:
    ```powershell
-   cd D:\Dropbox\Gaming\UTLogs\WebChatLog\_system\bin
+   cd 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\bin'
    .\Setup.ps1
    ```
    It will create folders, verify WinSCP is installed, probe your saved session, prompt for your API key (stored as a user-scoped environment variable), and smoke-test the API.
 5. Do a safe dry run:
    ```powershell
-   .\UT99-ChatMonitor.ps1 -NoDelete -NoAnalysis
+   & '.\UT99 ChatLog Analyzer.ps1' -NoDelete -NoAnalysis
    ```
    This downloads but doesn't delete from the server, and skips the API call so you spend no credits. Check `_system\runlogs\` for the log file and confirm the parsed counts look right.
 6. Run for real:
    ```powershell
-   .\UT99-ChatMonitor.ps1
+   & '.\UT99 ChatLog Analyzer.ps1'
    ```
    This is the moment files actually delete from the server. The report opens in your browser when done.
 7. Schedule it:
    ```powershell
-   .\Register-DailyTask.ps1 -Time 08:00
+   .\Register-DailyTask.ps1 -Time 08:00 -StartDate 2026-06-09
    ```
-   Registers a Windows Task Scheduler entry that runs the script every morning at 08:00 in your user context (so it has access to the saved session and API key).
+   Registers a Windows Task Scheduler entry that runs the script every morning at 08:00, starting on the given date, in your user context (so it has access to the saved session and API key). Omit `-StartDate` to start from today.
 
 ---
 
@@ -229,13 +228,13 @@ From the `_system\bin` folder:
 
 ```powershell
 # Default: yesterday's window, full pipeline
-.\UT99-ChatMonitor.ps1
+& '.\UT99 ChatLog Analyzer.ps1'
 
 # Today's chat (run anytime)
-.\UT99-ChatMonitor.ps1 -Date (Get-Date)
+& '.\UT99 ChatLog Analyzer.ps1' -Date (Get-Date)
 
 # Specific past day
-.\UT99-ChatMonitor.ps1 -NoFetch -Date '2026-04-30'
+& '.\UT99 ChatLog Analyzer.ps1' -NoFetch -Date '2026-04-30'
 
 # Trigger the scheduled task right now (uses scheduled config)
 Start-ScheduledTask -TaskName 'UT99 Chat Monitor - Daily'
@@ -259,13 +258,13 @@ Examples:
 
 ```powershell
 # Safe first-run dry test
-.\UT99-ChatMonitor.ps1 -NoDelete -NoAnalysis
+& '.\UT99 ChatLog Analyzer.ps1' -NoDelete -NoAnalysis
 
 # Reprocess a past day from local logs
-.\UT99-ChatMonitor.ps1 -NoFetch -Date '2026-04-30'
+& '.\UT99 ChatLog Analyzer.ps1' -NoFetch -Date '2026-04-30'
 
 # Today's report, leaving server logs alone (e.g. mid-day check)
-.\UT99-ChatMonitor.ps1 -Date (Get-Date) -NoDelete
+& '.\UT99 ChatLog Analyzer.ps1' -Date (Get-Date) -NoDelete
 ```
 
 ---
@@ -373,7 +372,7 @@ The function normalises the message to lowercase, strips punctuation, collapses 
 - **Greetings** — a set of base words (`hi`, `hey`, `hello`, `yo`, `sup`, `wsp`, `howdy`, `hola`, `heya`, `hai`, `wassup`, `salut`) with optional audience suffixes (`all`, `everyone`, `guys`, `people`, `fellas`, `team`), plus `what's up` variants.
 - **Empty after stripping** — messages that reduce to an empty string after punctuation removal (e.g. `:(`, `?`).
 
-The run log reports both counts: `N Say/TeamSay lines (M after noise filter)`. To add or adjust patterns, edit `Test-ChatNoise` in `UT99-ChatMonitor.ps1`.
+The run log reports both counts: `N Say/TeamSay lines (M after noise filter)`. To add or adjust patterns, edit `Test-ChatNoise` in `UT99 ChatLog Analyzer.ps1`.
 
 ### 4. Contact-info detection
 
@@ -415,6 +414,7 @@ The output is saved to `_system\reports\chat-report-YYYY-MM-DD.html` and copied 
 `Register-DailyTask.ps1` creates a Windows Task Scheduler entry that:
 
 - Runs daily at the time you specify (default 08:00).
+- Starts on the date given by `-StartDate yyyy-MM-dd` (defaults to today if omitted).
 - Uses `pwsh.exe` (PowerShell 7) if installed, otherwise `powershell.exe` (5.1).
 - Runs as your current Windows user (so it has access to the saved WinSCP session and `ANTHROPIC_API_KEY` env var).
 - Has a 30-minute execution time limit (a safety net in case the script ever hangs).
@@ -438,7 +438,7 @@ Means the window contained no chat at all. Usually because:
 
 ### `HTMLAsText.exe did not finish within 120 seconds`
 
-Should not occur in the current code — HTMLAsText was removed when we switched to native HTML parsing. If you see this, you're running an old version of `UT99-ChatMonitor.ps1`.
+Should not occur in the current code — HTMLAsText was removed when we switched to native HTML parsing. If you see this, you're running an old version of `UT99 ChatLog Analyzer.ps1`.
 
 ### Setup.ps1 hangs at "Checking WinSCP install"
 
@@ -490,7 +490,7 @@ If you need to reprocess files already on disk (e.g. running with `-NoFetch -Dat
 The `_system\runlogs\` folder gathers one log per script invocation forever. After a few months it'll be cluttered. To keep only the last 30 days:
 
 ```powershell
-Get-ChildItem D:\Dropbox\Gaming\UTLogs\WebChatLog\_system\runlogs\*.log |
+Get-ChildItem 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\Runlogs\*.log' |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item
 ```
@@ -507,7 +507,7 @@ Open `config.ps1`, change `ApiModel`. As of May 2026:
 
 ### Updating the noise filter
 
-The `Test-ChatNoise` function lives near the top of the functions section in `UT99-ChatMonitor.ps1`. It normalises each message (lowercase, punctuation stripped, whitespace collapsed) then applies regex and exact-match checks. To add patterns:
+The `Test-ChatNoise` function lives near the top of the functions section in `UT99 ChatLog Analyzer.ps1`. It normalises each message (lowercase, punctuation stripped, whitespace collapsed) then applies regex and exact-match checks. To add patterns:
 
 - **New GG variant** — extend the `^t?g{2,}s?$` regex or add an exact match to the `$greetings`-style list.
 - **New laugh variant** — add to the `lmao|lmfao|rofl|...` alternation.
@@ -517,7 +517,7 @@ Changes take effect on the next run with no other edits required.
 
 ### Updating the contact-info patterns
 
-The four regex patterns and the TLD list live in the `Find-ContactPatterns` function in `UT99-ChatMonitor.ps1`. To add a TLD, append to the `$tldList` string. To loosen or tighten any pattern, edit the value in the `$patterns` hashtable. Changes take effect on the next run.
+The four regex patterns and the TLD list live in the `Find-ContactPatterns` function in `UT99 ChatLog Analyzer.ps1`. To add a TLD, append to the `$tldList` string. To loosen or tighten any pattern, edit the value in the `$patterns` hashtable. Changes take effect on the next run.
 
 ### Updating Claude's instructions
 
@@ -528,7 +528,7 @@ The system prompt sent to Claude lives in the `Invoke-ChatAnalysis` function. Ed
 ```powershell
 .\Register-DailyTask.ps1 -Unregister                      # remove the scheduled task
 [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')   # remove the API key
-Remove-Item -Recurse D:\Dropbox\Gaming\UTLogs\WebChatLog\_system            # remove the system folder
+Remove-Item -Recurse 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system'
 ```
 
 Your raw `.htm` log files in `D:\Dropbox\Gaming\UTLogs\WebChatLog\` are untouched.

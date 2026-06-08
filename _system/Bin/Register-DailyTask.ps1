@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Registers a Windows Task Scheduler entry that runs UT99-ChatMonitor.ps1 daily.
+    Registers a Windows Task Scheduler entry that runs UT99 ChatLog Analyzer daily.
 
 .DESCRIPTION
     Creates a scheduled task named "UT99 Chat Monitor - Daily" that runs at the
@@ -10,6 +10,9 @@
 .PARAMETER Time
     Local time to run, in HH:mm 24-hour format. Default 08:00.
 
+.PARAMETER StartDate
+    Optional date (yyyy-MM-dd) on which the daily trigger begins. Defaults to today.
+
 .PARAMETER TaskName
     Name of the scheduled task. Default "UT99 Chat Monitor - Daily".
 
@@ -17,12 +20,13 @@
     Remove an existing task with this name.
 
 .EXAMPLE
-    .\Register-DailyTask.ps1 -Time 07:30
+    .\Register-DailyTask.ps1 -Time 08:00 -StartDate 2026-06-09
 #>
 [CmdletBinding()]
 param(
-    [string] $Time     = '08:00',
-    [string] $TaskName = 'UT99 Chat Monitor - Daily',
+    [string] $Time      = '08:00',
+    [string] $StartDate = '',
+    [string] $TaskName  = 'UT99 Chat Monitor - Daily',
     [switch] $Unregister
 )
 
@@ -40,7 +44,7 @@ if ($Unregister) {
 
 # Resolve script paths
 $BinDir     = $PSScriptRoot
-$MainScript = Join-Path $BinDir 'UT99-ChatMonitor.ps1'
+$MainScript = Join-Path $BinDir 'UT99 ChatLog Analyzer.ps1'
 if (-not (Test-Path $MainScript)) { throw "Cannot find $MainScript" }
 
 # Use pwsh.exe if available (PowerShell 7), else powershell.exe (5.1)
@@ -49,8 +53,13 @@ if ($pwshCmd) { $pwsh = $pwshCmd.Source } else { $pwsh = 'powershell.exe' }
 
 $argString = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $MainScript
 
-$action    = New-ScheduledTaskAction    -Execute $pwsh -Argument $argString -WorkingDirectory $BinDir
-$trigger   = New-ScheduledTaskTrigger   -Daily -At $Time
+$action    = New-ScheduledTaskAction  -Execute $pwsh -Argument $argString -WorkingDirectory $BinDir
+$startDT   = if ($StartDate) {
+    [datetime]::ParseExact("$StartDate $Time", 'yyyy-MM-dd HH:mm', $null)
+} else {
+    [datetime]::ParseExact($Time, 'HH:mm', $null)
+}
+$trigger   = New-ScheduledTaskTrigger -Daily -At $startDT
 $settings  = New-ScheduledTaskSettingsSet `
                 -StartWhenAvailable `
                 -RunOnlyIfNetworkAvailable `
@@ -73,7 +82,8 @@ Register-ScheduledTask -TaskName $TaskName -InputObject $task | Out-Null
 
 Write-Host ""
 Write-Host "Task '$TaskName' registered." -ForegroundColor Green
-Write-Host "  Runs daily at $Time"
+Write-Host "  First run: $($startDT.ToString('yyyy-MM-dd')) at $Time"
+Write-Host "  Runs daily thereafter at $Time"
 Write-Host "  Uses: $pwsh"
 Write-Host "  Script: $MainScript"
 Write-Host ""
