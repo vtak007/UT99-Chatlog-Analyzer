@@ -47,9 +47,18 @@ $BinDir     = $PSScriptRoot
 $MainScript = Join-Path $BinDir 'UT99 ChatLog Analyzer.ps1'
 if (-not (Test-Path $MainScript)) { throw "Cannot find $MainScript" }
 
-# Use pwsh.exe if available (PowerShell 7), else powershell.exe (5.1)
-$pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
-if ($pwshCmd) { $pwsh = $pwshCmd.Source } else { $pwsh = 'powershell.exe' }
+# Prefer the real pwsh.exe from known install locations; the Get-Command result
+# can be a Windows Store app stub (AppData\Local\Microsoft\WindowsApps\pwsh.exe)
+# that does not work in non-interactive Task Scheduler sessions.
+$pwshCandidates = @(
+    'C:\Program Files\PowerShell\7\pwsh.exe',
+    'C:\Program Files\PowerShell\7-preview\pwsh.exe'
+)
+$pwsh = $pwshCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $pwsh) {
+    $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+    $pwsh = if ($pwshCmd -and $pwshCmd.Source -notlike '*WindowsApps*') { $pwshCmd.Source } else { 'powershell.exe' }
+}
 
 $argString = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $MainScript
 
