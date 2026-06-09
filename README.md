@@ -120,6 +120,8 @@ D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_
 |
 \-- state\
     |-- last-run.json                  <- timestamp + counts of last run
+    |-- weekly-wins.json               <- current week win tallies
+    |-- prev-weekly-winners.json       <- top 3 from previous week (written on Monday rollover)
     |-- winscp-2026-05-02-080000.xml   <- WinSCP transfer log
     \-- api-raw-*.txt                  <- raw API responses if JSON parse fails
 ```
@@ -284,7 +286,8 @@ Each report is a single self-contained HTML file you can email, archive, or just
 - **Notable** — slurs, harassment, suspected cheating, drama.
 - **Contact Info & Links** — deterministic regex matches for emails, URLs, phone numbers, and IP/server addresses (independent of the LLM).
 - **Top chatters** — leaderboard of who said the most that day.
-- **Top 3 Weekly Winners** — cumulative win leaderboard for the current Mon 00:00 – Sun 23:59 week, labelled *Week Ending [Sunday date]*. Tallies accumulate across daily runs and reset automatically each Monday. Only games whose timestamp falls within the current week are counted — games from Sunday are never carried into Monday's new week. Use `Clear-WeeklyWinners.ps1` or the in-report Clear button to reset the tally early.
+- **Previous Week's Top 3 Winners** — appears in reports for the new week, showing the top 3 from the week just ended. Persists in every daily report until the *next* Monday rollover overwrites it with newer data, giving you the full week to document the results. Run `Clear-WeeklyWinners.ps1` to remove it early.
+- **Top 3 Weekly Winners** — cumulative win leaderboard for the current Mon 00:00 – Sun 23:59 week, labelled *Week Ending [Sunday date]*. Tallies accumulate across daily runs and reset automatically each Monday. Only games whose timestamp falls within the current week are counted — games from Sunday are never carried into Monday's new week. Run `Clear-WeeklyWinners.ps1` to reset the tally early.
 - **Players Who Joined** — alphabetical grid of every unique player name that has a Join record in the reporting window. The count appears in the section header. This is distinct from the "All players" concept — it shows specifically who connected to the server during this period.
 - **Show/hide all chat lines (raw)** — collapsible full list of every Say/TeamSay line that survived the noise filter. The toggle label shows the total count (e.g., *Show / hide all chat lines (raw) — 82 lines*) so you know what to expect before expanding. The list expands fully on the page when opened.
 
@@ -403,6 +406,7 @@ A `System.Text.StringBuilder` builds the page in memory using inline CSS (no ext
 - **Categorized sections** — five sections from Claude's JSON, each with a colour-coded badge.
 - **Contact Info & Links** — from the deterministic regex pass, independent of Claude.
 - **Top chatters** — from Claude's `stats.top_chatters` JSON field.
+- **Previous Week's Top 3 Winners** — shown when `state\prev-weekly-winners.json` exists. Written automatically when the week rolls over on Monday; appears in every daily report of the new week so you have time to document the results before it's naturally replaced the following Monday.
 - **Top 3 Weekly Winners** — built from the `state\weekly-wins.json` accumulator. Only `MatchPlayer` records whose timestamp falls within the current Mon 00:00 – Sun 23:59 week are counted, so a Monday morning run that processes Sunday's games never attributes those wins to the new week. The section header shows *Week Ending [Sunday date]*.
 - **Players Who Joined** — a compact alphabetical grid built from Join records in the window. Each unique player name appears once. The count is shown in the section header.
 - **Raw chat** — a collapsible `<pre>` block containing every filtered Say/TeamSay line. The toggle label shows the line count before you open it. The block expands fully on the page (no inner scroll cap) so all lines are visible when opened.

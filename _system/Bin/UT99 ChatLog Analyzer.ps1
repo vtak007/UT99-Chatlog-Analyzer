@@ -674,12 +674,27 @@ function Update-WeeklyWins {
     $monday = Get-WeekMonday
     $weekOf = $monday.ToString('yyyy-MM-dd')
 
+    $prevFilePath = Join-Path (Split-Path $FilePath -Parent) 'prev-weekly-winners.json'
+
     # Load existing state; reset if week has rolled over
     $stored = $null
     if (Test-Path $FilePath) {
         try { $stored = Get-Content $FilePath -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
     }
     if ($null -eq $stored -or [string]$stored.weekOf -ne $weekOf) {
+        # Week rolled over — snapshot the outgoing top 3 before resetting
+        if ($null -ne $stored -and $stored.wins) {
+            $oldWins = @{}
+            foreach ($prop in $stored.wins.PSObject.Properties) { $oldWins[[string]$prop.Name] = [int]$prop.Value }
+            if ($oldWins.Count -gt 0) {
+                $prevTop3 = @($oldWins.Keys | Sort-Object { -$oldWins[$_] } | Select-Object -First 3 | ForEach-Object {
+                    [pscustomobject]@{ player = $_; wins = $oldWins[$_] }
+                })
+                [pscustomobject]@{ weekOf = [string]$stored.weekOf; top3 = $prevTop3 } |
+                    ConvertTo-Json -Depth 5 | Set-Content -Path $prevFilePath -Encoding UTF8
+                Write-RunLog INFO ("Previous week top 3 saved: $prevFilePath")
+            }
+        }
         $stored = [pscustomobject]@{ weekOf = $weekOf; wins = [pscustomobject]@{}; seenGames = @() }
     }
 
@@ -752,7 +767,8 @@ function New-DashboardHtml {
         [Parameter(Mandatory)] [datetime] $WindowStart,
         [Parameter(Mandatory)] [datetime] $WindowEnd,
         [Parameter(Mandatory)] [string]   $OutPath,
-        [AllowNull()] $WeeklyWins
+        [AllowNull()] $WeeklyWins,
+        [AllowNull()] $PrevWeeklyWins
     )
 
     if ($null -eq $AllRecords) { $AllRecords = @() }
@@ -963,6 +979,33 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
     }
     $null = $sb.AppendLine('</div>')
 
+    # Previous Week's Winners section (persists in every daily report until next Monday rollover)
+    if ($PrevWeeklyWins -and $PrevWeeklyWins.top3 -and @($PrevWeeklyWins.top3).Count -gt 0) {
+        $pwWeekOf = [string]$PrevWeeklyWins.weekOf
+        $pwWeekEndLabel = $pwWeekOf
+        if ($pwWeekOf) {
+            try {
+                $pwMondayDt     = [datetime]::ParseExact($pwWeekOf, 'yyyy-MM-dd', $null)
+                $pwWeekEndLabel = $pwMondayDt.AddDays(6).ToString('MMM d, yyyy')
+            } catch {}
+        }
+        $pwTop3      = @($PrevWeeklyWins.top3)
+        $rankColors  = @('#ffd700', '#c0c0c0', '#cd7f32')
+        $null = $sb.AppendLine('<div class="section">')
+        $null = $sb.AppendLine(('<h3><span class="badge" style="background:#b8a0ff">&#9733;</span>Previous Week''s Top 3 Winners &nbsp;<span style="font-size:11px;color:var(--muted)">Week Ending {0}</span><span class="count">{1}</span></h3>' -f (ConvertTo-HtmlEncoded $pwWeekEndLabel), $pwTop3.Count))
+        $null = $sb.AppendLine('<div style="padding:4px 18px 8px">')
+        for ($i = 0; $i -lt $pwTop3.Count; $i++) {
+            $pl    = [string]$pwTop3[$i].player
+            $wc    = [int]$pwTop3[$i].wins
+            $unit  = if ($wc -eq 1) { 'Game Won' } else { 'Games Won' }
+            $rc    = $rankColors[$i]
+            $entry = ConvertTo-HtmlEncoded ('[Week Ending {0}] - {1} - {2} {3}' -f $pwWeekEndLabel, $pl, $wc, $unit)
+            $null = $sb.AppendLine(('<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)"><span style="color:{0};font-weight:700;font-size:16px;min-width:26px">#{1}</span><span>{2}</span></div>' -f $rc, ($i + 1), $entry))
+        }
+        $null = $sb.AppendLine('</div>')
+        $null = $sb.AppendLine('</div>')
+    }
+
     # Top 3 Weekly Winners section
     $wwData   = $WeeklyWins
     $wwWeekOf = if ($wwData) { [string]$wwData.weekOf } else { (Get-WeekMonday).ToString('yyyy-MM-dd') }
@@ -988,9 +1031,6 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
 
     $null = $sb.AppendLine('<div class="section" id="ww-section">')
     $null = $sb.AppendLine(('<h3><span class="badge" style="background:#ffd700">&#9733;</span>Top 3 Weekly Winners &nbsp;<span style="font-size:11px;color:var(--muted)">Week Ending {0}</span><span class="count">{1}</span></h3>' -f (ConvertTo-HtmlEncoded $wwWeekEndLabel), $wwTop3.Count))
-    $null = $sb.AppendLine('<div style="padding:6px 18px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:flex-end">')
-    $null = $sb.AppendLine('<button id="btn-clear-ww" onclick="clearWeeklyWinners()" style="background:transparent;color:#ff6b4a;border:1px solid #ff6b4a;border-radius:5px;padding:4px 12px;cursor:pointer;font-size:12px;font-family:inherit">Clear Weekly</button>')
-    $null = $sb.AppendLine('</div>')
     $null = $sb.AppendLine('<div id="ww-body">')
     if ($wwTop3.Count -eq 0) {
         $null = $sb.AppendLine('<div class="empty">No wins recorded this week yet.</div>')
@@ -1008,28 +1048,6 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
         $null = $sb.AppendLine('</div>')
     }
     $null = $sb.AppendLine('</div>')
-    $wwJs = @'
-<script>
-(function(){
-  var wk='WW_WEEK',k='ww_cleared_'+wk;
-  if(localStorage.getItem(k)){_wwClear();}
-})();
-function clearWeeklyWinners(){
-  if(!confirm('Clear the Top 3 Weekly Winners display for Week Ending WW_WEEK_END?'))return;
-  localStorage.setItem('ww_cleared_WW_WEEK','1');
-  _wwClear();
-}
-function _wwClear(){
-  var el=document.getElementById('ww-body');
-  if(el)el.innerHTML='<div class="empty">Weekly winners cleared from display. Data resets automatically each Monday, or run Clear-WeeklyWinners.ps1 in the Bin folder to reset the data file immediately.</div>';
-  var b=document.getElementById('btn-clear-ww');
-  if(b){b.disabled=true;b.style.opacity='0.5';}
-}
-</script>
-'@
-    $wwJs = $wwJs -replace 'WW_WEEK_END', $wwWeekEndLabel
-    $wwJs = $wwJs -replace 'WW_WEEK', $wwWeekOf
-    $null = $sb.AppendLine($wwJs)
     $null = $sb.AppendLine('</div>')
 
     # Players who joined -- split into active players and spectators
@@ -1192,6 +1210,12 @@ try {
     # 2.7 Update weekly win totals (accumulates across daily runs, resets each Monday)
     $weeklyWins = Update-WeeklyWins -AllRecords $windowRecords -FilePath $WeeklyWinsFile -ExcludedBots $ExcludedBots
 
+    $prevWeeklyWinsFile = Join-Path $StateFolder 'prev-weekly-winners.json'
+    $prevWeeklyWins = $null
+    if (Test-Path $prevWeeklyWinsFile) {
+        try { $prevWeeklyWins = Get-Content $prevWeeklyWinsFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
+    }
+
     # 3. Analysis
     $analysis = $null
     if ($NoAnalysis) {
@@ -1228,7 +1252,8 @@ try {
         -WindowStart     $WindowStart `
         -WindowEnd       $WindowEnd `
         -OutPath         $reportPath `
-        -WeeklyWins      $weeklyWins
+        -WeeklyWins      $weeklyWins `
+        -PrevWeeklyWins  $prevWeeklyWins
 
     if ($Config.PublishLatestSymlink) {
         $latestPath = Join-Path $ReportFolder 'latest.html'

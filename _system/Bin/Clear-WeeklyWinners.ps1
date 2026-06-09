@@ -14,14 +14,28 @@
 [CmdletBinding(SupportsShouldProcess)]
 param()
 
-$StateFolder    = Join-Path (Split-Path $PSScriptRoot -Parent) 'state'
-$WeeklyWinsFile = Join-Path $StateFolder 'weekly-wins.json'
+$StateFolder        = Join-Path (Split-Path $PSScriptRoot -Parent) 'state'
+$WeeklyWinsFile     = Join-Path $StateFolder 'weekly-wins.json'
+$PrevWeeklyWinsFile = Join-Path $StateFolder 'prev-weekly-winners.json'
+
+$cleared = $false
 
 if (Test-Path $WeeklyWinsFile) {
     if ($PSCmdlet.ShouldProcess($WeeklyWinsFile, 'Delete weekly wins state file')) {
         Remove-Item $WeeklyWinsFile -Force
         Write-Host "Weekly winners data cleared: $WeeklyWinsFile" -ForegroundColor Green
+        $cleared = $true
     }
-} else {
-    Write-Host "Nothing to clear — no weekly wins file found at: $WeeklyWinsFile" -ForegroundColor Yellow
+}
+
+if (Test-Path $PrevWeeklyWinsFile) {
+    if ($PSCmdlet.ShouldProcess($PrevWeeklyWinsFile, 'Delete previous week winners state file')) {
+        Remove-Item $PrevWeeklyWinsFile -Force
+        Write-Host "Previous week winners data cleared: $PrevWeeklyWinsFile" -ForegroundColor Green
+        $cleared = $true
+    }
+}
+
+if (-not $cleared) {
+    Write-Host "Nothing to clear — no weekly wins files found." -ForegroundColor Yellow
 }

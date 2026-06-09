@@ -14,4 +14,5 @@ This project's README is `README.md` in the project root. Whenever changes are m
 | `Bin\Clear-WeeklyWinners.ps1` | Resets the weekly wins state file |
 | `README.md` (project root) | User documentation |
 | `State\weekly-wins.json` | Accumulated win tallies for the current week |
+| `State\prev-weekly-winners.json` | Top 3 from the previous week; written on Monday rollover, deleted by Clear-WeeklyWinners.ps1 |
 | `State\last-run.json` | Timestamp and counts from the last run |
