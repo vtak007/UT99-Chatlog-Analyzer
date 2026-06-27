@@ -284,6 +284,8 @@ Each report is a single self-contained HTML file you can email, archive, or just
 - **Requests** — map adds, mod tweaks, admin actions, balance asks.
 - **Compliments** — positive feedback worth knowing about.
 - **Notable** — slurs, harassment, suspected cheating, drama.
+- **Map Comments** — any player opinion, reaction, or preference about a specific map. Each entry includes the map name when Claude can identify it.
+- **Server Comments** — comments about the current server or any other game server, including performance feedback and references to other servers.
 - **Contact Info & Links** — deterministic regex matches for emails, URLs, phone numbers, and IP/server addresses (independent of the LLM).
 - **Top chatters** — leaderboard of who said the most that day.
 - **Previous Week's Top 3 Winners** — appears in reports for the new week, showing the top 3 from the week just ended. Persists in every daily report until the *next* Monday rollover overwrites it with newer data, giving you the full week to document the results. Run `Clear-WeeklyWinners.ps1` to remove it early.

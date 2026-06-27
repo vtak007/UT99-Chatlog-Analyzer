@@ -428,16 +428,18 @@ function Invoke-ChatAnalysis {
     if ($null -eq $SayRecords) { $SayRecords = @() }
     if ($SayRecords.Count -eq 0) {
         return [pscustomobject]@{
-            summary     = 'No chat messages in this period.'
-            complaints  = @()
-            issues      = @()
-            requests    = @()
-            compliments = @()
-            notable     = @()
-            toxicity    = @()
-            contact     = @()
-            strategy    = @()
-            social      = @()
+            summary         = 'No chat messages in this period.'
+            complaints      = @()
+            issues          = @()
+            requests        = @()
+            compliments     = @()
+            notable         = @()
+            toxicity        = @()
+            contact         = @()
+            strategy        = @()
+            social          = @()
+            map_comments    = @()
+            server_comments = @()
             stats       = [pscustomobject]@{
                 total_say_lines = 0
                 unique_players  = 0
@@ -499,6 +501,14 @@ CATEGORIES AND SUBCATEGORIES:
    9.1 Mild Toxicity        - profanity, mild insults, trash talk, "damn u"
    9.2 Explicit/Adult       - sexual content, graphic language, hate speech, slurs (CRITICAL)
 
+10. map_comments - Player opinions, reactions, or preferences about specific maps
+    10.1 Map Feedback  - positive or negative opinion about a specific map ("I love this map", "morpheus sucks")
+    10.2 Map Request   - asking to switch to or play a particular map (may also appear in 3.1)
+
+11. server_comments - Comments about the current server or any other game server
+    11.1 This Server   - feedback, praise, or complaints about the current server
+    11.2 Other Server  - mentioning, recommending, or criticising another server
+
 SEVERITY LEVELS:
 - LOW      Normal chatter, single minor complaint, casual banter
 - MEDIUM   Repeated pattern, moderate issue, mild trash talk
@@ -510,6 +520,8 @@ RULES:
 - A message CAN appear in multiple categories if it genuinely fits more than one
 - Category 8 (social): only flag substantive conversation or real-life topics, not one-liners
 - Category 6 (contact): raw URLs and IPs are caught by a separate regex pass - flag only context-meaningful promotion/recruitment
+- Category 10 (map_comments): flag any mention of a specific map or opinion about a map; extract the map name into the "map" field (empty string if not clearly stated)
+- Category 11 (server_comments): flag any mention of this server or another game server, including performance feedback or references to other servers
 - Be conservative: don't flag generic chat. Only flag real signal.
 
 Output ONLY a single JSON object. No prose, no markdown fences. Schema:
@@ -523,7 +535,9 @@ Output ONLY a single JSON object. No prose, no markdown fences. Schema:
   "toxicity":    [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"HIGH","subcategory":"9.1"}],
   "contact":     [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"MEDIUM","subcategory":"6.1"}],
   "strategy":    [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"LOW","subcategory":"7.1"}],
-  "social":      [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"LOW","subcategory":"8.2"}],
+  "social":         [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"LOW","subcategory":"8.2"}],
+  "map_comments":   [{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","map":"map name or empty string","why":"short reason","severity":"LOW","subcategory":"10.1"}],
+  "server_comments":[{"timestamp":"MM/dd HH:mm","player":"name","message":"verbatim","why":"short reason","severity":"LOW","subcategory":"11.1"}],
   "stats": {
     "total_say_lines": <int>,
     "unique_players": <int>,
@@ -775,15 +789,17 @@ function New-DashboardHtml {
     if ($null -eq $SayRecords) { $SayRecords = @() }
 
     $sections = @(
-        @{ Key = 'complaints';  Title = 'Complaints';          Icon = 'C'; Color = '#ff6b4a' }
-        @{ Key = 'toxicity';    Title = 'Toxicity';            Icon = 'T'; Color = '#ff4444' }
-        @{ Key = 'notable';     Title = 'Notable';             Icon = '!'; Color = '#c987ff' }
-        @{ Key = 'issues';      Title = 'Issues';              Icon = 'I'; Color = '#ffb547' }
-        @{ Key = 'requests';    Title = 'Requests';            Icon = 'R'; Color = '#4aa3ff' }
-        @{ Key = 'compliments'; Title = 'Compliments';         Icon = '+'; Color = '#5dd39e' }
-        @{ Key = 'contact';     Title = 'Contact (AI)';        Icon = '@'; Color = '#00b4ff' }
-        @{ Key = 'strategy';    Title = 'Strategy / Coaching'; Icon = 'S'; Color = '#7ecfff' }
-        @{ Key = 'social';      Title = 'Social / Community';  Icon = '~'; Color = '#7abf7a' }
+        @{ Key = 'complaints';      Title = 'Complaints';          Icon = 'C'; Color = '#ff6b4a' }
+        @{ Key = 'toxicity';        Title = 'Toxicity';            Icon = 'T'; Color = '#ff4444' }
+        @{ Key = 'notable';         Title = 'Notable';             Icon = '!'; Color = '#c987ff' }
+        @{ Key = 'issues';          Title = 'Issues';              Icon = 'I'; Color = '#ffb547' }
+        @{ Key = 'requests';        Title = 'Requests';            Icon = 'R'; Color = '#4aa3ff' }
+        @{ Key = 'compliments';     Title = 'Compliments';         Icon = '+'; Color = '#5dd39e' }
+        @{ Key = 'map_comments';    Title = 'Map Comments';        Icon = 'M'; Color = '#d4a843' }
+        @{ Key = 'server_comments'; Title = 'Server Comments';     Icon = 'V'; Color = '#4a7fd4' }
+        @{ Key = 'contact';         Title = 'Contact (AI)';        Icon = '@'; Color = '#00b4ff' }
+        @{ Key = 'strategy';        Title = 'Strategy / Coaching'; Icon = 'S'; Color = '#7ecfff' }
+        @{ Key = 'social';          Title = 'Social / Community';  Icon = '~'; Color = '#7abf7a' }
     )
 
     $sb = [System.Text.StringBuilder]::new()
@@ -897,7 +913,8 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
                 $ts  = ConvertTo-HtmlEncoded ([string]$it.timestamp)
                 $pl  = ConvertTo-HtmlEncoded ([string]$it.player)
                 $msg = ConvertTo-HtmlEncoded ([string]$it.message)
-                $why = ConvertTo-HtmlEncoded ([string]$it.why)
+                $why     = ConvertTo-HtmlEncoded ([string]$it.why)
+                $mapName = if ($it.PSObject.Properties['map']) { ConvertTo-HtmlEncoded ([string]$it.map) } else { '' }
                 $sev = ([string]$it.severity).ToUpper().Trim()
                 $sub = ConvertTo-HtmlEncoded ([string]$it.subcategory)
                 $sevColor = switch ($sev) {
@@ -915,7 +932,8 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
                 $null = $sb.AppendLine('<div class="item">')
                 $null = $sb.AppendLine(('<div class="row1"><span class="ts">{0}</span><span class="player">{1}</span>{2}{3}</div>' -f $ts, $pl, $sevBadge, $subLabel))
                 $null = $sb.AppendLine(('<div class="msg">{0}</div>' -f $msg))
-                if ($why) { $null = $sb.AppendLine(('<div class="why">{0}</div>' -f $why)) }
+                if ($why)     { $null = $sb.AppendLine(('<div class="why">{0}</div>' -f $why)) }
+                if ($mapName) { $null = $sb.AppendLine(('<div class="why"><strong>Map:</strong> {0}</div>' -f $mapName)) }
                 $null = $sb.AppendLine('</div>')
             }
         }
@@ -1221,10 +1239,11 @@ try {
     if ($NoAnalysis) {
         Write-RunLog INFO "Skipping Claude analysis (-NoAnalysis)."
         $analysis = [pscustomobject]@{
-            summary     = '(Analysis skipped - running in -NoAnalysis mode.)'
-            complaints  = @(); issues = @(); requests = @(); compliments = @(); notable = @()
-            toxicity    = @(); contact = @(); strategy = @(); social = @()
-            stats       = [pscustomobject]@{ total_say_lines = $sayRecords.Count; unique_players = 0; top_chatters = @() }
+            summary         = '(Analysis skipped - running in -NoAnalysis mode.)'
+            complaints      = @(); issues = @(); requests = @(); compliments = @(); notable = @()
+            toxicity        = @(); contact = @(); strategy = @(); social = @()
+            map_comments    = @(); server_comments = @()
+            stats           = [pscustomobject]@{ total_say_lines = $sayRecords.Count; unique_players = 0; top_chatters = @() }
         }
     } else {
         $apiKey = $env:ANTHROPIC_API_KEY
