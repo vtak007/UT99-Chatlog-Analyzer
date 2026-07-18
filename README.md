@@ -102,7 +102,7 @@ D:\Dropbox\Gaming\UTLogs\WebChatLog\
 |
 \-- *.htm                       <- raw downloads from FTP (kept for reference)
 
-D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\
+D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system\
 |-- config.ps1              <- editable settings (paths, model, schedule)
 |
 |-- bin\
@@ -155,7 +155,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 | Setting | Default | Purpose |
 |---|---|---|
 | `LocalLogFolder` | `D:\Dropbox\Gaming\UTLogs\WebChatLog` | Where downloaded `.htm` files land. Same folder you've been using manually with WinSCP. |
-| `SystemFolder` | `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system` | Where reports, runlogs, state, and scripts live. |
+| `SystemFolder` | `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system` | Where reports, runlogs, state, and scripts live. |
 | `LocalParsePattern` | `*.htm` | What file pattern the parser looks at locally. |
 
 ### Analysis
@@ -188,7 +188,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 
 ### Steps
 
-1. Place the `_system` folder at `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\`, containing `config.ps1`, `bin\`, etc.
+1. Place the `_system` folder at `D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system\`, containing `config.ps1`, `bin\`, etc.
 2. Open PowerShell 7 (search Start for "PowerShell" — black icon, not blue).
 3. Allow local script execution (one time, per user):
    ```powershell
@@ -196,7 +196,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
    ```
 4. Run the setup wizard:
    ```powershell
-   cd 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\bin'
+   cd 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system\bin'
    .\Setup.ps1
    ```
    It will create folders, verify WinSCP is installed, probe your saved session, prompt for your API key (stored as a user-scoped environment variable), and smoke-test the API.
@@ -496,7 +496,7 @@ If you need to reprocess files already on disk (e.g. running with `-NoFetch -Dat
 The `_system\runlogs\` folder gathers one log per script invocation forever. After a few months it'll be cluttered. To keep only the last 30 days:
 
 ```powershell
-Get-ChildItem 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system\Runlogs\*.log' |
+Get-ChildItem 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system\Runlogs\*.log' |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item
 ```
@@ -534,7 +534,7 @@ The system prompt sent to Claude lives in the `Invoke-ChatAnalysis` function. Ed
 ```powershell
 .\Register-DailyTask.ps1 -Unregister                      # remove the scheduled task
 [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')   # remove the API key
-Remove-Item -Recurse 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system'
+Remove-Item -Recurse 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system'
 ```
 
 Your raw `.htm` log files in `D:\Dropbox\Gaming\UTLogs\WebChatLog\` are untouched.

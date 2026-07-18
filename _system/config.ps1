@@ -41,7 +41,7 @@ $Config = @{
     # System folder for reports, state, and run logs. By default this is a
     # subfolder named "_system" inside your log folder so everything stays
     # together.
-    SystemFolder      = 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99 ChatLog Analyzer\_system'
+    SystemFolder      = 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system'
 
     # --- Analysis ------------------------------------------------------------
     # Anthropic API model. claude-sonnet-4-6 is the current default and gives
