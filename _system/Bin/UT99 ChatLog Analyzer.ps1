@@ -1140,28 +1140,29 @@ footer{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
 }
 
 # ========================================================================== #
-#  Step 6 - Recycle processed source logs                                     #
+#  Step 6 - Archive processed source logs                                     #
 # ========================================================================== #
 
 function Remove-ProcessedLogs {
     param([string]$Folder, [string]$Pattern)
-    if (-not $Config.RecycleProcessedLogs) { return }
-    Add-Type -AssemblyName Microsoft.VisualBasic
+    if (-not $Config.ArchiveProcessedLogs) { return }
+    $archiveFolder = Join-Path $Folder 'Archived Chats'
+    if (-not (Test-Path $archiveFolder)) { $null = New-Item -ItemType Directory -Force -Path $archiveFolder }
     $files = @(Get-ChildItem -Path $Folder -Filter $Pattern -File -ErrorAction SilentlyContinue)
     $count = 0
     foreach ($f in $files) {
         try {
-            [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(
-                $f.FullName,
-                [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs,
-                [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin
-            )
+            $dest = Join-Path $archiveFolder $f.Name
+            if (Test-Path $dest) {
+                $dest = Join-Path $archiveFolder ('{0}-{1}{2}' -f $f.BaseName, (Get-Date -Format 'yyyyMMddHHmmssfff'), $f.Extension)
+            }
+            Move-Item -Path $f.FullName -Destination $dest -Force
             $count++
         } catch {
-            Write-RunLog WARN ("Could not recycle {0}: {1}" -f $f.Name, $_.Exception.Message)
+            Write-RunLog WARN ("Could not archive {0}: {1}" -f $f.Name, $_.Exception.Message)
         }
     }
-    Write-RunLog INFO ("Recycled {0} processed log file(s) to Recycle Bin." -f $count)
+    Write-RunLog INFO ("Archived {0} processed log file(s) to {1}" -f $count, $archiveFolder)
 }
 
 # ========================================================================== #
@@ -1293,7 +1294,7 @@ try {
         say_lines_analyzed = $sayRecords.Count
     } | ConvertTo-Json | Set-Content -Path $stateFile -Encoding UTF8
 
-    # 5b. Recycle processed source log files
+    # 5b. Archive processed source log files
     Remove-ProcessedLogs -Folder $LogFolder -Pattern $parsePattern
 
     # 6. Open in browser if interactive

@@ -81,10 +81,11 @@ $Config = @{
     # finishes a non-scheduled run. Has no effect when run by Task Scheduler.
     OpenReportOnInteractiveRun = $true
 
-    # If $true, sends all processed .htm source files to the Recycle Bin after
-    # a successful run so they don't accumulate and get re-parsed on future runs.
-    # Files can be restored from the Recycle Bin if needed.
-    RecycleProcessedLogs = $true
+    # If $true, moves all processed .htm source files into an "Archived Chats"
+    # subfolder of LocalLogFolder after a successful run so they don't
+    # accumulate and get re-parsed on future runs. Files remain on disk there
+    # and can be reviewed or deleted manually at any time.
+    ArchiveProcessedLogs = $true
 }
 
 # Export the hashtable so dot-sourcing scripts can use it.

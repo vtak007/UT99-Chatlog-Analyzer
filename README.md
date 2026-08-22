@@ -173,7 +173,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 |---|---|---|
 | `PublishLatestSymlink` | `$true` | Also write `latest.html` so you can bookmark a URL that always shows the newest report. |
 | `OpenReportOnInteractiveRun` | `$true` | When you run the script manually (not via Task Scheduler), open the report in your default browser when done. |
-| `RecycleProcessedLogs` | `$true` | After a successful run, sends all `.htm` source files in `LocalLogFolder` to the Windows Recycle Bin so they don't accumulate and get re-parsed on future runs. Files can be restored from the Recycle Bin if needed. Set to `$false` when running with `-NoFetch` to reprocess files you still need on disk. |
+| `ArchiveProcessedLogs` | `$true` | After a successful run, moves all `.htm` source files in `LocalLogFolder` into an `Archived Chats` subfolder so they don't accumulate and get re-parsed on future runs. Files remain on disk there. Set to `$false` when running with `-NoFetch` to reprocess files you still need in place. |
 
 ---
 
@@ -483,13 +483,13 @@ Open Task Scheduler, find the task, look at History. If it ran but produced no r
 
 ## Maintenance
 
-### Processed log files and the Recycle Bin
+### Processed log files and the Archived Chats folder
 
-With `RecycleProcessedLogs = $true` (the default), every `.htm` source file in `LocalLogFolder` is sent to the Windows Recycle Bin at the end of each successful run. The run log reports the count: `Recycled N processed log file(s) to Recycle Bin.`
+With `ArchiveProcessedLogs = $true` (the default), every `.htm` source file in `LocalLogFolder` is moved into an `Archived Chats` subfolder (created automatically) at the end of each successful run. The run log reports the count: `Archived N processed log file(s) to <path>\Archived Chats`. A name collision (same filename already archived) gets a timestamp suffix so nothing is overwritten.
 
-Files are only recycled after the report is written — a failed run leaves them on disk. To restore a file, open the Recycle Bin and use *Restore*.
+Files are only archived after the report is written — a failed run leaves them in place. To recover a file, just move it back out of `Archived Chats`.
 
-If you need to reprocess files already on disk (e.g. running with `-NoFetch -Date`), set `RecycleProcessedLogs = $false` in `config.ps1` first, then restore it afterward.
+If you need to reprocess files already on disk (e.g. running with `-NoFetch -Date`), set `ArchiveProcessedLogs = $false` in `config.ps1` first, then restore it afterward.
 
 ### Rotating runlogs
 
