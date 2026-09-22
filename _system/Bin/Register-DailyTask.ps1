@@ -74,7 +74,9 @@ $settings  = New-ScheduledTaskSettingsSet `
                 -RunOnlyIfNetworkAvailable `
                 -DontStopIfGoingOnBatteries `
                 -AllowStartIfOnBatteries `
-                -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+                -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
+                -RestartCount 3 `
+                -RestartInterval (New-TimeSpan -Minutes 15)
 
 # Run as current user, only when logged in (so env vars and saved sessions are available)
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited

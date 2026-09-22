@@ -557,29 +557,38 @@ If a category has nothing, return an empty array.
         messages   = @(@{ role = 'user'; content = $userPrompt })
     } | ConvertTo-Json -Depth 12 -Compress
 
-    Write-RunLog INFO ("Calling Anthropic API ({0}, {1} chat lines)..." -f $Model, $SayRecords.Count)
-
     $headers = @{
         'x-api-key'         = $ApiKey
         'anthropic-version' = '2023-06-01'
     }
 
-    $response = Invoke-RestMethod `
-        -Uri 'https://api.anthropic.com/v1/messages' `
-        -Method Post -Headers $headers `
-        -Body $body -ContentType 'application/json; charset=utf-8'
+    $maxAttempts = 3
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        Write-RunLog INFO ("Calling Anthropic API ({0}, {1} chat lines, attempt {2}/{3})..." -f $Model, $SayRecords.Count, $attempt, $maxAttempts)
 
-    $text = $response.content[0].text
-    # Strip code fences if any
-    $text = $text -replace '(?s)^\s*```(?:json)?\s*', '' -replace '(?s)\s*```\s*$', ''
+        $response = Invoke-RestMethod `
+            -Uri 'https://api.anthropic.com/v1/messages' `
+            -Method Post -Headers $headers `
+            -Body $body -ContentType 'application/json; charset=utf-8'
 
-    try {
-        return ($text | ConvertFrom-Json)
-    } catch {
-        Write-RunLog ERROR "Failed to parse Claude response as JSON. Raw text saved to state."
-        $rawPath = Join-Path $StateFolder ("api-raw-{0}.txt" -f (Get-Date -Format 'yyyy-MM-dd-HHmmss'))
-        Set-Content -Path $rawPath -Value $text -Encoding UTF8
-        throw
+        $text = $response.content[0].text
+        # Strip code fences if any
+        $text = $text -replace '(?s)^\s*```(?:json)?\s*', '' -replace '(?s)\s*```\s*$', ''
+
+        try {
+            return ($text | ConvertFrom-Json)
+        } catch {
+            $reason = if ($response.stop_reason -eq 'max_tokens') { 'response hit max_tokens and was truncated' } else { "parse error: $($_.Exception.Message)" }
+            $rawPath = Join-Path $StateFolder ("api-raw-{0}.txt" -f (Get-Date -Format 'yyyy-MM-dd-HHmmss'))
+            Set-Content -Path $rawPath -Value $text -Encoding UTF8
+
+            if ($attempt -lt $maxAttempts) {
+                Write-RunLog WARN ("Failed to parse Claude response as JSON ({0}). Raw text saved to state. Retrying..." -f $reason)
+            } else {
+                Write-RunLog ERROR ("Failed to parse Claude response as JSON ({0}) after {1} attempt(s). Raw text saved to state." -f $reason, $maxAttempts)
+                throw
+            }
+        }
     }
 }
 

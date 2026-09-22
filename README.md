@@ -163,7 +163,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 | Setting | Default | Purpose |
 |---|---|---|
 | `ApiModel` | `claude-sonnet-4-6` | Anthropic model used for categorization. Switch to `claude-haiku-4-5-20251001` for a cheaper / faster option with slightly less nuance. |
-| `ApiMaxTokens` | `4096` | Max tokens in the API response. 4096 fits a busy day's report with headroom. |
+| `ApiMaxTokens` | `16000` | Max tokens in the API response. Raised from 8192 after busy days (500+ chat lines) truncated the JSON mid-response and failed the run. |
 | `ReportWindowHours` | `24` | Hours of chat to include in each report. |
 | `ReportMode` | `Rolling` | How the window is positioned. `Rolling` = last N hours ending at script run time (a morning run captures overnight chat). `PreviousCalendarDay` = yesterday midnight to midnight (legacy; today's overnight chat appears in tomorrow's report). |
 
@@ -239,7 +239,7 @@ From the `_system\bin` folder:
 & '.\UT99 ChatLog Analyzer.ps1' -NoFetch -Date '2026-04-30'
 
 # Trigger the scheduled task right now (uses scheduled config)
-Start-ScheduledTask -TaskName 'UT99 Chat Monitor - Daily'
+Start-ScheduledTask -TaskName 'UT99 Chatlog Analyzer'
 ```
 
 ---
@@ -398,7 +398,7 @@ The user prompt includes the pre-computed unique chatter count so Claude's text 
 
 The prompt explicitly instructs Claude to ignore casual banter and only flag lines with real signal. The `notable` category includes contact-info sharing, recruitment to other servers, and suspicious links — so even if a regex pattern misses something subtle (an obfuscated URL, a phone number written as words), Claude's pass can still catch it.
 
-The response is parsed as JSON. If parsing fails, the raw text is dumped to `_system\state\api-raw-<timestamp>.txt` for inspection.
+The response is parsed as JSON. If parsing fails (e.g. the response was truncated mid-JSON), the raw text is dumped to `_system\state\api-raw-<timestamp>.txt` for inspection and the call is retried, up to 3 attempts total, before the run fails.
 
 ### 6. HTML dashboard
 
@@ -424,6 +424,7 @@ The output is saved to `_system\reports\chat-report-YYYY-MM-DD.html` and copied 
 - Uses `pwsh.exe` (PowerShell 7) if installed, otherwise `powershell.exe` (5.1).
 - Runs as your current Windows user (so it has access to the saved WinSCP session and `ANTHROPIC_API_KEY` env var).
 - Has a 30-minute execution time limit (a safety net in case the script ever hangs).
+- Restarts automatically up to 3 times, 15 minutes apart, if a run fails (e.g. a transient API or FTP error) — no need to notice and rerun manually.
 
 To remove it later: `.\Register-DailyTask.ps1 -Unregister`.
 

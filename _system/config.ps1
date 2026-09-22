@@ -49,8 +49,9 @@ $Config = @{
     # and faster if cost matters.
     ApiModel          = 'claude-sonnet-4-6'
 
-    # Maximum tokens in the model's response. 8192 handles busy days with 500+ chat lines.
-    ApiMaxTokens      = 8192
+    # Maximum tokens in the model's response. Raised from 8192 after busy days
+    # (500+ chat lines) truncated mid-JSON and failed the whole run.
+    ApiMaxTokens      = 16000
 
     # Time window for each report, in hours. 24 = a full day.
     ReportWindowHours = 24
