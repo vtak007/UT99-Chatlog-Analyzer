@@ -566,10 +566,21 @@ If a category has nothing, return an empty array.
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         Write-RunLog INFO ("Calling Anthropic API ({0}, {1} chat lines, attempt {2}/{3})..." -f $Model, $SayRecords.Count, $attempt, $maxAttempts)
 
-        $response = Invoke-RestMethod `
-            -Uri 'https://api.anthropic.com/v1/messages' `
-            -Method Post -Headers $headers `
-            -Body $body -ContentType 'application/json; charset=utf-8'
+        try {
+            $response = Invoke-RestMethod `
+                -Uri 'https://api.anthropic.com/v1/messages' `
+                -Method Post -Headers $headers `
+                -Body $body -ContentType 'application/json; charset=utf-8'
+        } catch {
+            # Log the API's error body (PS 7 puts it in ErrorDetails; PS 5.1 needs the response stream).
+            $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'n/a' }
+            $detail = $_.ErrorDetails.Message
+            if (-not $detail -and $_.Exception.Response -and $_.Exception.Response.GetResponseStream) {
+                try { $detail = (New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())).ReadToEnd() } catch { }
+            }
+            Write-RunLog ERROR ("Anthropic API call failed (HTTP {0}): {1}" -f $status, $(if ($detail) { $detail } else { $_.Exception.Message }))
+            throw
+        }
 
         $text = $response.content[0].text
         # Strip code fences if any

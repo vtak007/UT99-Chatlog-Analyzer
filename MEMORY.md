@@ -57,6 +57,7 @@ See `CLAUDE.md` for project-specific details.
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
 
+- 2026-10-04 — `Invoke-ChatAnalysis` now logs the Anthropic API's HTTP status and error body to the run log on failure (previously opaque "400 Bad Request").
 - 2026-10-04 — Set `ReportMode = 'PreviousCalendarDay'` (was `Rolling`) so each report covers a fixed midnight-to-midnight span; README updated. Rolling left gaps when a run was missed (10/3 07:00-12:45 was never reported).
 - 2026-09-22 — Fixed daily task failing with exit 0x1 on busy days: raised `ApiMaxTokens` 8192 → 16000, added a 3-attempt retry around the Claude API call/JSON parse in `Invoke-ChatAnalysis`, and enabled Task Scheduler auto-restart (3 attempts, 15 min apart) on the live "UT99 Chatlog Analyzer" task via `Register-DailyTask.ps1`.
 - 2026-08-22 — Replaced RecycleProcessedLogs with ArchiveProcessedLogs: processed .htm logs now move to WebChatLog\Archived Chats instead of the Windows Recycle Bin.
