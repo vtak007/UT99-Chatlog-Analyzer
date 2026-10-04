@@ -7,6 +7,15 @@
     chosen local time, every day, in your current Windows user context (so it
     has access to the saved WinSCP session and the ANTHROPIC_API_KEY env var).
 
+    By default the task is registered to "Run whether user is logged on or not"
+    (LogonType Password, RunLevel Limited), so it still runs after an unattended
+    reboot with nobody logged in. This requires your Windows password, which you
+    are prompted for and which Task Scheduler stores. Use -InteractiveOnly for
+    the old behavior (runs only while you are logged on; no password needed).
+    The task runs at Limited (not elevated): the script lives in a user-writable
+    folder, so running it at Highest would be a privilege-escalation path.
+    Registering/replacing a task may need an elevated (Administrator) PowerShell.
+
 .PARAMETER Time
     Local time to run, in HH:mm 24-hour format. Default 08:00.
 
@@ -15,6 +24,10 @@
 
 .PARAMETER TaskName
     Name of the scheduled task. Default "UT99 Chat Monitor - Daily".
+
+.PARAMETER InteractiveOnly
+    Register the task to run only while the user is logged on (LogonType
+    Interactive, RunLevel Limited). A run is skipped if nobody is logged in.
 
 .PARAMETER Unregister
     Remove an existing task with this name.
@@ -27,6 +40,7 @@ param(
     [string] $Time      = '08:00',
     [string] $StartDate = '',
     [string] $TaskName  = 'UT99 Chat Monitor - Daily',
+    [switch] $InteractiveOnly,
     [switch] $Unregister
 )
 
@@ -78,24 +92,37 @@ $settings  = New-ScheduledTaskSettingsSet `
                 -RestartCount 3 `
                 -RestartInterval (New-TimeSpan -Minutes 15)
 
-# Run as current user, only when logged in (so env vars and saved sessions are available)
-$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+# Run as the current user so env vars and the saved WinSCP session are available.
+# Default: run whether logged on or not (stored password) so a reboot with nobody
+# logged in does not skip the run. -InteractiveOnly: only while logged on.
+$userId = "$env:USERDOMAIN\$env:USERNAME"
+if ($InteractiveOnly) {
+    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Limited
+} else {
+    # Ask BEFORE unregistering any existing task so cancelling leaves it intact.
+    $cred = Get-Credential -UserName $userId -Message "Windows password for '$userId' (stored by Task Scheduler so the task can run when logged off)"
+    if (-not $cred) { throw 'No credential supplied; nothing changed.' }
+    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Password -RunLevel Limited
+}
 
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
         -Description "Downloads UT99 server WebChatLog files, analyzes with Claude, generates a daily HTML dashboard."
 
-# Replace existing
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+# Replace existing (Register-ScheduledTask -Force overwrites in place, so a failed
+# registration, e.g. a wrong password, does not leave you with no task at all).
+if ($InteractiveOnly) {
+    Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force | Out-Null
+} else {
+    Register-ScheduledTask -TaskName $TaskName -InputObject $task -User $cred.UserName `
+        -Password $cred.GetNetworkCredential().Password -Force | Out-Null
 }
-
-Register-ScheduledTask -TaskName $TaskName -InputObject $task | Out-Null
 
 Write-Host ""
 Write-Host "Task '$TaskName' registered." -ForegroundColor Green
 Write-Host "  First run: $($startDT.ToString('yyyy-MM-dd')) at $Time"
 Write-Host "  Runs daily thereafter at $Time"
 Write-Host "  Uses: $pwsh"
+Write-Host ("  Logon: " + $(if ($InteractiveOnly) { 'only while logged on (Interactive)' } else { 'whether logged on or not (Password, Limited)' }))
 Write-Host "  Script: $MainScript"
 Write-Host ""
 Write-Host "To run it manually right now:"           -ForegroundColor Cyan

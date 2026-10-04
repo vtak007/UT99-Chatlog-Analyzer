@@ -54,10 +54,11 @@ See `CLAUDE.md` for project-specific details.
 - Modifying/re-registering the live scheduled task requires an elevated (Administrator) PowerShell
   session — `Unregister-ScheduledTask`/`Register-ScheduledTask` fail with Access Denied otherwise.
 
-- The live task's principal (`LogonType: Password`, `RunLevel: Highest`) was changed by hand and now differs
-  from `Register-DailyTask.ps1`, which registers `Interactive`/`Limited`. Re-registering with the script
-  reverts it to the pre-10/4 behaviour (task skipped when nobody is logged on). Re-apply "run whether
-  user is logged on or not" afterwards, or update the script.
+- `Register-DailyTask.ps1` registers `LogonType: Password` / `RunLevel: Limited` by default (prompts for the
+  Windows password; replacing a task may need an elevated shell). The live task was set to `Highest` by
+  hand — unnecessary since the script lives in a user-writable folder (security review 2026-10-04);
+  re-register to drop it to `Limited`. `-InteractiveOnly` gives the old
+  `Interactive`/`Limited` behaviour. Changing the Windows password requires re-registering the task.
 - The WinSCP saved session "FMJ FTP Server" must keep its password saved (it had silently gone missing
   before 2026-10-04); the unattended run cannot answer a prompt. The password is stored in the user's
   registry (HKCU), so the task must keep running as that user.
@@ -66,6 +67,7 @@ See `CLAUDE.md` for project-specific details.
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
 
+- 2026-10-04 — `Register-DailyTask.ps1` now registers "run whether logged on or not" by default (prompts for the Windows password; `-InteractiveOnly` for the old behaviour) and overwrites with `-Force` instead of unregistering first. Not yet exercised against the live task.
 - 2026-10-04 — Live-config fixes for the missed 07:00 run (no repo change): enabled Windows auto-logon, set the task to run whether logged on or not, re-saved the WinSCP session password.
 - 2026-10-04 — `Invoke-ChatAnalysis` now logs the Anthropic API's HTTP status and error body to the run log on failure (previously opaque "400 Bad Request").
 - 2026-10-04 — Set `ReportMode = 'PreviousCalendarDay'` (was `Rolling`) so each report covers a fixed midnight-to-midnight span; README updated. Rolling left gaps when a run was missed (10/3 07:00-12:45 was never reported).
