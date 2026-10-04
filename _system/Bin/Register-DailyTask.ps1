@@ -8,11 +8,13 @@
     has access to the saved WinSCP session and the ANTHROPIC_API_KEY env var).
 
     By default the task is registered to "Run whether user is logged on or not"
-    (LogonType Password, RunLevel Highest), so it still runs after an unattended
+    (LogonType Password, RunLevel Limited), so it still runs after an unattended
     reboot with nobody logged in. This requires your Windows password, which you
     are prompted for and which Task Scheduler stores. Use -InteractiveOnly for
     the old behavior (runs only while you are logged on; no password needed).
-    Registering with a password needs an elevated (Administrator) PowerShell.
+    The task runs at Limited (not elevated): the script lives in a user-writable
+    folder, so running it at Highest would be a privilege-escalation path.
+    Registering/replacing a task may need an elevated (Administrator) PowerShell.
 
 .PARAMETER Time
     Local time to run, in HH:mm 24-hour format. Default 08:00.
@@ -100,7 +102,7 @@ if ($InteractiveOnly) {
     # Ask BEFORE unregistering any existing task so cancelling leaves it intact.
     $cred = Get-Credential -UserName $userId -Message "Windows password for '$userId' (stored by Task Scheduler so the task can run when logged off)"
     if (-not $cred) { throw 'No credential supplied; nothing changed.' }
-    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Password -RunLevel Highest
+    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Password -RunLevel Limited
 }
 
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
@@ -120,7 +122,7 @@ Write-Host "Task '$TaskName' registered." -ForegroundColor Green
 Write-Host "  First run: $($startDT.ToString('yyyy-MM-dd')) at $Time"
 Write-Host "  Runs daily thereafter at $Time"
 Write-Host "  Uses: $pwsh"
-Write-Host ("  Logon: " + $(if ($InteractiveOnly) { 'only while logged on (Interactive)' } else { 'whether logged on or not (Password, Highest)' }))
+Write-Host ("  Logon: " + $(if ($InteractiveOnly) { 'only while logged on (Interactive)' } else { 'whether logged on or not (Password, Limited)' }))
 Write-Host "  Script: $MainScript"
 Write-Host ""
 Write-Host "To run it manually right now:"           -ForegroundColor Cyan

@@ -54,8 +54,10 @@ See `CLAUDE.md` for project-specific details.
 - Modifying/re-registering the live scheduled task requires an elevated (Administrator) PowerShell
   session — `Unregister-ScheduledTask`/`Register-ScheduledTask` fail with Access Denied otherwise.
 
-- `Register-DailyTask.ps1` registers `LogonType: Password` / `RunLevel: Highest` by default (matches the live
-  task; prompts for the Windows password, needs an elevated shell). `-InteractiveOnly` gives the old
+- `Register-DailyTask.ps1` registers `LogonType: Password` / `RunLevel: Limited` by default (prompts for the
+  Windows password; replacing a task may need an elevated shell). The live task was set to `Highest` by
+  hand — unnecessary since the script lives in a user-writable folder (security review 2026-10-04);
+  re-register to drop it to `Limited`. `-InteractiveOnly` gives the old
   `Interactive`/`Limited` behaviour. Changing the Windows password requires re-registering the task.
 - The WinSCP saved session "FMJ FTP Server" must keep its password saved (it had silently gone missing
   before 2026-10-04); the unattended run cannot answer a prompt. The password is stored in the user's
