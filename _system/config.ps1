@@ -61,12 +61,13 @@ $Config = @{
     #                           A morning run captures overnight chat (incl. 0000-0700)
     #                           in the SAME morning's report. Consecutive scheduled runs
     #                           at the same time of day produce non-overlapping windows.
-    #   'PreviousCalendarDay' - yesterday midnight to midnight (legacy behavior).
-    #                           Today's overnight chat would not appear until tomorrow's
-    #                           run. No overlap, predictable boundaries.
+    #   'PreviousCalendarDay' - yesterday midnight to midnight (fixed span). Today's
+    #                           overnight chat does not appear until tomorrow's run.
+    #                           No overlap or gaps, even if a scheduled run is missed
+    #                           and made up later.
     # In both modes, passing -Date <yyyy-MM-dd> on the command line forces a
     # midnight-to-midnight report for that specific calendar date.
-    ReportMode = 'Rolling'
+    ReportMode = 'PreviousCalendarDay'
 
     # --- Reports -------------------------------------------------------------
     # If $true, the latest report is also copied to "latest.html" for easy
