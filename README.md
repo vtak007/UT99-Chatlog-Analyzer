@@ -30,7 +30,7 @@ Every morning (or whenever you trigger it), the system:
 2. Downloads any new `.htm` chat log files from `/Logs/WebChatLog/`, skipping the file currently being written to by the mod.
 3. Optionally deletes the originals from the server (you control this in config).
 4. Parses the HTML chat tables directly in PowerShell — no external converter needed.
-5. Filters down to the last 24 hours of `Say` and `TeamSay` lines (configurable). By default this is a *rolling* window ending at the moment the script runs, so a morning run sees the overnight session (including the 0000-0700 hours) in the same morning's report.
+5. Filters down to the last 24 hours of `Say` and `TeamSay` lines (configurable). By default this is the previous calendar day, midnight to midnight, so every report covers a fixed span regardless of when the script runs. A *rolling* window ending at the moment the script runs is available via `ReportMode = 'Rolling'`.
 6. Applies a noise filter that removes low-signal messages before any further processing — GG variants, LOL/laugh variants, greetings, and punctuation-only lines are dropped. The run log reports both the raw count and the post-filter count.
 7. Runs two parallel passes over the filtered messages:
    - A deterministic regex sweep for emails, URLs, phone numbers, and IP/server addresses.
@@ -165,7 +165,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 | `ApiModel` | `claude-sonnet-4-6` | Anthropic model used for categorization. Switch to `claude-haiku-4-5-20251001` for a cheaper / faster option with slightly less nuance. |
 | `ApiMaxTokens` | `16000` | Max tokens in the API response. Raised from 8192 after busy days (500+ chat lines) truncated the JSON mid-response and failed the run. |
 | `ReportWindowHours` | `24` | Hours of chat to include in each report. |
-| `ReportMode` | `Rolling` | How the window is positioned. `Rolling` = last N hours ending at script run time (a morning run captures overnight chat). `PreviousCalendarDay` = yesterday midnight to midnight (legacy; today's overnight chat appears in tomorrow's report). |
+| `ReportMode` | `PreviousCalendarDay` | How the window is positioned. `PreviousCalendarDay` = yesterday midnight to midnight (fixed span; today's overnight chat appears in tomorrow's report; a missed run doesn't shift or leave gaps in later reports). `Rolling` = last N hours ending at script run time (a morning run captures overnight chat, but a missed or late run leaves a gap). |
 
 ### Reports
 
@@ -355,8 +355,8 @@ For each valid chat row, the four cells map to `Timestamp`, `Type`, `Player`, `M
 
 The window is determined by `Config.ReportMode`:
 
-- **`Rolling` (default)** — `WindowEnd = now`, `WindowStart = now - ReportWindowHours`. A scheduled 08:00 run on Tuesday produces a window of `Mon 08:00 -> Tue 08:00`, which captures both Monday's late-night gaming and Tuesday's 0000-0800 hours. Consecutive scheduled runs at the same time of day touch at the seam — every chat line appears in exactly one report.
-- **`PreviousCalendarDay`** — `WindowEnd = today 00:00`, `WindowStart = yesterday 00:00`. Strict midnight-to-midnight of the previous day. Predictable boundaries, but today's overnight chat (0000-0800) does not appear until tomorrow's run.
+- **`Rolling`** — `WindowEnd = now`, `WindowStart = now - ReportWindowHours`. A scheduled 08:00 run on Tuesday produces a window of `Mon 08:00 -> Tue 08:00`, which captures both Monday's late-night gaming and Tuesday's 0000-0800 hours. Consecutive scheduled runs at the same time of day touch at the seam — every chat line appears in exactly one report.
+- **`PreviousCalendarDay` (default)** — `WindowEnd = today 00:00`, `WindowStart = yesterday 00:00`. Strict midnight-to-midnight of the previous day. Fixed boundaries independent of run time, but today's overnight chat (0000-0800) does not appear until tomorrow's run.
 - **`-Date <yyyy-MM-dd>`** (any mode) — overrides both. Forces midnight-to-midnight of the specified calendar date. Use for backfilling or revisiting.
 
 Any record whose `Timestamp` falls inside the window is kept. The script also skips parsing files whose modification time is more than two days before the window start — a small performance optimization.
