@@ -22,9 +22,10 @@ See `CLAUDE.md` for project-specific details.
   05:01), and nobody is logged on at 07:00 afterwards. `StartWhenAvailable: True` did NOT catch up
   (NextRunTime jumped to 10/5). Script itself is fine: last run 10/3 exited 0, `last-run.json` window
   end 2026-10-03T07:00. The 10/1 report exists only because of a manual run at 18:27.
-  **STATUS: mitigated 2026-10-04** by enabling Windows auto-logon (takes effect at next restart; verify the
-  07:00 run after the next 05:00 reboot, expected ~10/7). Still open: find what triggers the 05:00
-  `shutdown.exe` restart every 3 days (not yet investigated).
+  **STATUS: fixed 2026-10-04** (live config only, no repo change): Windows auto-logon enabled AND the live
+  task changed to `LogonType: Password` ("run whether user is logged on or not"), `RunLevel: Highest`.
+  The 05:00 restart is a user-owned scheduled Windows Task and is intentionally left alone. First
+  unattended run to verify: 07:00 on 10/5 (and the first one after the next 05:00 reboot, ~10/7).
 
 - 2026-10-04 — Manual backfill run failed at the WinSCP fetch: saved session "FMJ FTP Server" had no stored
   password (WinSCP prompted `Password:`; non-interactive script exits -2147483647). Cause of the loss
@@ -53,10 +54,19 @@ See `CLAUDE.md` for project-specific details.
 - Modifying/re-registering the live scheduled task requires an elevated (Administrator) PowerShell
   session — `Unregister-ScheduledTask`/`Register-ScheduledTask` fail with Access Denied otherwise.
 
+- The live task's principal (`LogonType: Password`, `RunLevel: Highest`) was changed by hand and now differs
+  from `Register-DailyTask.ps1`, which registers `Interactive`/`Limited`. Re-registering with the script
+  reverts it to the pre-10/4 behaviour (task skipped when nobody is logged on). Re-apply "run whether
+  user is logged on or not" afterwards, or update the script.
+- The WinSCP saved session "FMJ FTP Server" must keep its password saved (it had silently gone missing
+  before 2026-10-04); the unattended run cannot answer a prompt. The password is stored in the user's
+  registry (HKCU), so the task must keep running as that user.
+
 ## CHANGE LOG
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
 
+- 2026-10-04 — Live-config fixes for the missed 07:00 run (no repo change): enabled Windows auto-logon, set the task to run whether logged on or not, re-saved the WinSCP session password.
 - 2026-10-04 — `Invoke-ChatAnalysis` now logs the Anthropic API's HTTP status and error body to the run log on failure (previously opaque "400 Bad Request").
 - 2026-10-04 — Set `ReportMode = 'PreviousCalendarDay'` (was `Rolling`) so each report covers a fixed midnight-to-midnight span; README updated. Rolling left gaps when a run was missed (10/3 07:00-12:45 was never reported).
 - 2026-09-22 — Fixed daily task failing with exit 0x1 on busy days: raised `ApiMaxTokens` 8192 → 16000, added a 3-attempt retry around the Claude API call/JSON parse in `Invoke-ChatAnalysis`, and enabled Task Scheduler auto-restart (3 attempts, 15 min apart) on the live "UT99 Chatlog Analyzer" task via `Register-DailyTask.ps1`.
