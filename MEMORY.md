@@ -23,7 +23,7 @@ See `CLAUDE.md` for project-specific details.
   (NextRunTime jumped to 10/5). Script itself is fine: last run 10/3 exited 0, `last-run.json` window
   end 2026-10-03T07:00. The 10/1 report exists only because of a manual run at 18:27.
   **STATUS: fixed 2026-10-04** (live config only, no repo change): Windows auto-logon enabled AND the live
-  task changed to `LogonType: Password` ("run whether user is logged on or not"), `RunLevel: Highest`.
+  task changed to `LogonType: Password` ("run whether user is logged on or not"), `RunLevel: Highest` (later lowered to `Limited`, see CHANGE LOG).
   The 05:00 restart is a user-owned scheduled Windows Task and is intentionally left alone. First
   unattended run to verify: 07:00 on 10/5 (and the first one after the next 05:00 reboot, ~10/7).
 
@@ -55,9 +55,9 @@ See `CLAUDE.md` for project-specific details.
   session — `Unregister-ScheduledTask`/`Register-ScheduledTask` fail with Access Denied otherwise.
 
 - `Register-DailyTask.ps1` registers `LogonType: Password` / `RunLevel: Limited` by default (prompts for the
-  Windows password; replacing a task may need an elevated shell). The live task was set to `Highest` by
-  hand — unnecessary since the script lives in a user-writable folder (security review 2026-10-04);
-  re-register to drop it to `Limited`. `-InteractiveOnly` gives the old
+  Windows password; replacing a task may need an elevated shell). The live task was briefly `Highest`
+  (set by hand) — unnecessary since the script lives in a user-writable folder (security review
+  2026-10-04); re-registered at `Limited` the same day. `-InteractiveOnly` gives the old
   `Interactive`/`Limited` behaviour. Changing the Windows password requires re-registering the task.
 - The WinSCP saved session "FMJ FTP Server" must keep its password saved (it had silently gone missing
   before 2026-10-04); the unattended run cannot answer a prompt. The password is stored in the user's
@@ -67,6 +67,7 @@ See `CLAUDE.md` for project-specific details.
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
 
+- 2026-10-04 — Re-registered the live "UT99 Chatlog Analyzer" task with the updated `Register-DailyTask.ps1` (elevated shell, `-TaskName "UT99 Chatlog Analyzer" -Time 07:00`). Verified read-only afterwards: user Perdi, `LogonType: Password`, `RunLevel: Limited`, daily 07:00, next run 10/5, restart 3x/15 min. First unattended run (10/5 07:00) not yet confirmed.
 - 2026-10-04 — `Register-DailyTask.ps1` now registers "run whether logged on or not" by default (prompts for the Windows password; `-InteractiveOnly` for the old behaviour) and overwrites with `-Force` instead of unregistering first. Not yet exercised against the live task.
 - 2026-10-04 — Live-config fixes for the missed 07:00 run (no repo change): enabled Windows auto-logon, set the task to run whether logged on or not, re-saved the WinSCP session password.
 - 2026-10-04 — `Invoke-ChatAnalysis` now logs the Anthropic API's HTTP status and error body to the run log on failure (previously opaque "400 Bad Request").
