@@ -102,12 +102,12 @@ if ($probeExit -eq 0) {
 
 # ---- 5. API key -------------------------------------------------------------
 Write-Step "Checking Anthropic API key"
-$existing = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+$existing = [Environment]::GetEnvironmentVariable('UT99_ANALYZER_API_KEY', 'User')
 if ($existing) {
-    Write-OK ("ANTHROPIC_API_KEY already set (length {0})." -f $existing.Length)
+    Write-OK ("UT99_ANALYZER_API_KEY already set (length {0})." -f $existing.Length)
     $resp = Read-Host "    Replace it? [y/N]"
     if ($resp -notmatch '^[yY]') {
-        $env:ANTHROPIC_API_KEY = $existing
+        $env:UT99_ANALYZER_API_KEY = $existing
     } else {
         $existing = $null
     }
@@ -127,9 +127,9 @@ if (-not $existing) {
         Write-Err "Empty key. Setup aborted."
         exit 1
     }
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $plain, 'User')
-    $env:ANTHROPIC_API_KEY = $plain
-    Write-OK "API key stored as user environment variable ANTHROPIC_API_KEY."
+    [Environment]::SetEnvironmentVariable('UT99_ANALYZER_API_KEY', $plain, 'User')
+    $env:UT99_ANALYZER_API_KEY = $plain
+    Write-OK "API key stored as user environment variable UT99_ANALYZER_API_KEY."
 }
 
 # ---- 6. Smoke-test the API -------------------------------------------------
@@ -141,7 +141,7 @@ try {
         messages   = @(@{ role = 'user'; content = 'Reply with exactly: OK' })
     } | ConvertTo-Json -Depth 6 -Compress
     $r = Invoke-RestMethod -Uri 'https://api.anthropic.com/v1/messages' -Method Post -Headers @{
-        'x-api-key'         = $env:ANTHROPIC_API_KEY
+        'x-api-key'         = $env:UT99_ANALYZER_API_KEY
         'anthropic-version' = '2023-06-01'
     } -Body $body -ContentType 'application/json; charset=utf-8'
     Write-OK ("API responded: '{0}'" -f $r.content[0].text.Trim())

@@ -1267,9 +1267,9 @@ try {
             stats           = [pscustomobject]@{ total_say_lines = $sayRecords.Count; unique_players = 0; top_chatters = @() }
         }
     } else {
-        $apiKey = $env:ANTHROPIC_API_KEY
+        $apiKey = $env:UT99_ANALYZER_API_KEY
         if (-not $apiKey) {
-            throw "ANTHROPIC_API_KEY environment variable is not set. Run Setup.ps1 to configure it."
+            throw "UT99_ANALYZER_API_KEY environment variable is not set. Run Setup.ps1 to configure it."
         }
         $analysis = Invoke-ChatAnalysis `
             -SayRecords  $sayRecords `
