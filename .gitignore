@@ -15,3 +15,6 @@ _system/.claude/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Task Scheduler export of the live task (machine-specific)
+UT99 Chatlog Analyzer.xml

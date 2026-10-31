@@ -48,6 +48,10 @@ See `CLAUDE.md` for project-specific details.
 
 ## PROJECT CONVENTIONS
 
+- The Anthropic API key lives in the user env var **`UT99_ANALYZER_API_KEY`**, never `ANTHROPIC_API_KEY`:
+  Claude Code uses `ANTHROPIC_API_KEY` in preference to the Pro subscription login, so that name silently
+  bills the API. `Setup.ps1`, `UT99 ChatLog Analyzer.ps1` and the README all use the project-specific name.
+
 - The live Task Scheduler entry is named **"UT99 Chatlog Analyzer"**, not the
   `Register-DailyTask.ps1` default of "UT99 Chat Monitor - Daily" — always pass
   `-TaskName "UT99 Chatlog Analyzer"` when re-registering, or you'll create a duplicate task.
@@ -67,8 +71,11 @@ See `CLAUDE.md` for project-specific details.
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
 
-- 2026-10-04 — Re-registered the live "UT99 Chatlog Analyzer" task with the updated `Register-DailyTask.ps1` (elevated shell, `-TaskName "UT99 Chatlog Analyzer" -Time 07:00`). Verified read-only afterwards: user Perdi, `LogonType: Password`, `RunLevel: Limited`, daily 07:00, next run 10/5, restart 3x/15 min. First unattended run (10/5 07:00) not yet confirmed.
-- 2026-10-04 — `Register-DailyTask.ps1` now registers "run whether logged on or not" by default (prompts for the Windows password; `-InteractiveOnly` for the old behaviour) and overwrites with `-Force` instead of unregistering first. Not yet exercised against the live task.
+- 2026-10-31 — Docs caught up with the two `fix/analyzer-own-api-key-var` commits: README and `Register-DailyTask.ps1` help now name `UT99_ANALYZER_API_KEY`, and `-NoArchive` is documented in the flags table, examples and the Archived Chats section. Gitignored the local `UT99 Chatlog Analyzer.xml` task export.
+- 2026-10-31 — Added `-NoArchive` to the main script: skips moving processed `.htm` logs to `Archived Chats` so a multi-day `-NoFetch -Date` backfill can reuse the same source files.
+- 2026-10-31 — Script and Setup now read the API key from `UT99_ANALYZER_API_KEY` instead of `ANTHROPIC_API_KEY`: Claude Code prefers `ANTHROPIC_API_KEY` over the Pro subscription login, so the old name silently billed the API (and removing it to fix the login broke the daily task from 2026-10-13). Verified live — user env has the new var only, and the 10/31 07:15 unattended run completed its Claude analysis.
+- 2026-10-04 — Re-registered the live "UT99 Chatlog Analyzer" task with the updated `Register-DailyTask.ps1` (elevated shell, `-TaskName "UT99 Chatlog Analyzer" -Time 07:00`). Verified read-only afterwards: user Perdi, `LogonType: Password`, `RunLevel: Limited`, daily 07:00, next run 10/5, restart 3x/15 min. Unattended running confirmed: unbroken 07:15 runs every day from 10/5 through 10/31 (runlogs + `last-run.json`).
+- 2026-10-04 — `Register-DailyTask.ps1` now registers "run whether logged on or not" by default (prompts for the Windows password; `-InteractiveOnly` for the old behaviour) and overwrites with `-Force` instead of unregistering first. Exercised against the live task on 2026-10-04; running unattended since.
 - 2026-10-04 — Live-config fixes for the missed 07:00 run (no repo change): enabled Windows auto-logon, set the task to run whether logged on or not, re-saved the WinSCP session password.
 - 2026-10-04 — `Invoke-ChatAnalysis` now logs the Anthropic API's HTTP status and error body to the run log on failure (previously opaque "400 Bad Request").
 - 2026-10-04 — Set `ReportMode = 'PreviousCalendarDay'` (was `Rolling`) so each report covers a fixed midnight-to-midnight span; README updated. Rolling left gaps when a run was missed (10/3 07:00-12:45 was never reported).
