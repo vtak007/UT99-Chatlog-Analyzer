@@ -29,6 +29,10 @@
     Download files but never delete from server (overrides config).
     Useful for first runs while you verify everything works.
 
+.PARAMETER NoArchive
+    Leave processed .htm logs in place instead of moving them to "Archived Chats"
+    (overrides config). Use when backfilling several days with -Date.
+
 .PARAMETER NoAnalysis
     Skip the Claude API call. Produces a basic report from local data only.
     Useful for testing parsing without spending API credits.
@@ -53,6 +57,7 @@ param(
     [string]   $ConfigPath = (Join-Path (Split-Path $PSScriptRoot -Parent) 'config.ps1'),
     [switch]   $NoFetch,
     [switch]   $NoDelete,
+    [switch]   $NoArchive,
     [switch]   $NoAnalysis,
     [switch]   $ClearWeekly,
     [datetime] $Date
@@ -1267,9 +1272,9 @@ try {
             stats           = [pscustomobject]@{ total_say_lines = $sayRecords.Count; unique_players = 0; top_chatters = @() }
         }
     } else {
-        $apiKey = $env:ANTHROPIC_API_KEY
+        $apiKey = $env:UT99_ANALYZER_API_KEY
         if (-not $apiKey) {
-            throw "ANTHROPIC_API_KEY environment variable is not set. Run Setup.ps1 to configure it."
+            throw "UT99_ANALYZER_API_KEY environment variable is not set. Run Setup.ps1 to configure it."
         }
         $analysis = Invoke-ChatAnalysis `
             -SayRecords  $sayRecords `
@@ -1315,7 +1320,8 @@ try {
     } | ConvertTo-Json | Set-Content -Path $stateFile -Encoding UTF8
 
     # 5b. Archive processed source log files
-    Remove-ProcessedLogs -Folder $LogFolder -Pattern $parsePattern
+    if ($NoArchive) { Write-RunLog INFO "-NoArchive set: leaving processed log files in place." }
+    else { Remove-ProcessedLogs -Folder $LogFolder -Pattern $parsePattern }
 
     # 6. Open in browser if interactive
     $isInteractive = ([Environment]::UserInteractive) -and ($Host.Name -ne 'ServerRemoteHost')

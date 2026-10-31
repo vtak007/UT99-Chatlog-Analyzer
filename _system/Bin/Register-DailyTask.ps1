@@ -5,7 +5,7 @@
 .DESCRIPTION
     Creates a scheduled task named "UT99 Chat Monitor - Daily" that runs at the
     chosen local time, every day, in your current Windows user context (so it
-    has access to the saved WinSCP session and the ANTHROPIC_API_KEY env var).
+    has access to the saved WinSCP session and the UT99_ANALYZER_API_KEY env var).
 
     By default the task is registered to "Run whether user is logged on or not"
     (LogonType Password, RunLevel Limited), so it still runs after an unattended

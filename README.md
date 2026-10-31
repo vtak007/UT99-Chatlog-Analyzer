@@ -183,7 +183,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
 
 - Windows 11 (PowerShell 5.1 or PowerShell 7 — both work; 7 is preferred).
 - WinSCP 6.5.6 or later (https://winscp.net) with your FTP session saved as `FMJ FTP Server`.
-- An Anthropic API key (console.anthropic.com -> Settings -> API Keys).
+- An Anthropic API key (console.anthropic.com -> Settings -> API Keys). Setup stores it in the user environment variable `UT99_ANALYZER_API_KEY` - deliberately *not* `ANTHROPIC_API_KEY`, which Claude Code would use in preference to a Pro subscription login and silently bill the API.
 - The saved WinSCP session must have its **password saved** (Edit session in WinSCP -> Save -> tick "Save password").
 
 ### Steps
@@ -199,7 +199,7 @@ All settings live in `config.ps1`. Edit with any text editor, save, and the next
    cd 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system\bin'
    .\Setup.ps1
    ```
-   It will create folders, verify WinSCP is installed, probe your saved session, prompt for your API key (stored as a user-scoped environment variable), and smoke-test the API.
+   It will create folders, verify WinSCP is installed, probe your saved session, prompt for your API key (stored as the user-scoped environment variable `UT99_ANALYZER_API_KEY`), and smoke-test the API.
 5. Do a safe dry run:
    ```powershell
    & '.\UT99 ChatLog Analyzer.ps1' -NoDelete -NoAnalysis
@@ -253,6 +253,7 @@ All flags are switches (no values needed) unless noted.
 | `-Date <datetime>` | Generate a report for a specific date instead of yesterday. Example: `-Date '2026-04-30'`. |
 | `-NoFetch` | Skip the WinSCP download step. Use when reprocessing logs already on disk. |
 | `-NoDelete` | Download files but do not delete from the server, regardless of `DeleteAfterDownload`. Useful for first runs. |
+| `-NoArchive` | Leave processed `.htm` logs in place instead of moving them to `Archived Chats`, regardless of `ArchiveProcessedLogs`. Use when backfilling several days with `-Date` so every pass still sees the same source files. |
 | `-NoAnalysis` | Skip the Claude API call. Produces a report with empty categories but full stats, Players Who Joined, contact-info findings, and raw chat. Useful for testing without spending credits. |
 | `-ConfigPath <path>` | Use an alternate config file. Defaults to `..\config.ps1` next to the script. |
 
@@ -267,6 +268,11 @@ Examples:
 
 # Today's report, leaving server logs alone (e.g. mid-day check)
 & '.\UT99 ChatLog Analyzer.ps1' -Date (Get-Date) -NoDelete
+
+# Backfill several days from local logs, keeping the source files for each pass
+'2026-10-20','2026-10-21','2026-10-22' | ForEach-Object {
+    & '.\UT99 ChatLog Analyzer.ps1' -NoFetch -NoArchive -Date $_
+}
 ```
 
 ---
@@ -422,7 +428,7 @@ The output is saved to `_system\reports\chat-report-YYYY-MM-DD.html` and copied 
 - Runs daily at the time you specify (default 08:00).
 - Starts on the date given by `-StartDate yyyy-MM-dd` (defaults to today if omitted).
 - Uses `pwsh.exe` (PowerShell 7) if installed, otherwise `powershell.exe` (5.1).
-- Runs as your current Windows user (so it has access to the saved WinSCP session and `ANTHROPIC_API_KEY` env var). By default it is registered as "Run whether user is logged on or not" (`Password` logon type, not elevated), so a run is not skipped if the machine rebooted and nobody has logged in. You are prompted for your Windows password, which Task Scheduler stores, and replacing an existing task may need an elevated (Administrator) PowerShell. Pass `-InteractiveOnly` to register the old behaviour instead (runs only while you are logged on; no password needed). Changing your Windows password later requires re-registering the task.
+- Runs as your current Windows user (so it has access to the saved WinSCP session and `UT99_ANALYZER_API_KEY` env var). By default it is registered as "Run whether user is logged on or not" (`Password` logon type, not elevated), so a run is not skipped if the machine rebooted and nobody has logged in. You are prompted for your Windows password, which Task Scheduler stores, and replacing an existing task may need an elevated (Administrator) PowerShell. Pass `-InteractiveOnly` to register the old behaviour instead (runs only while you are logged on; no password needed). Changing your Windows password later requires re-registering the task.
 - Needs the WinSCP session's password to be **saved** (WinSCP "Edit" -> Password -> Save); a non-interactive run cannot answer a password prompt and fails at the fetch step.
 - Has a 30-minute execution time limit (a safety net in case the script ever hangs).
 - Restarts automatically up to 3 times, 15 minutes apart, if a run fails (e.g. a transient API or FTP error) — no need to notice and rerun manually.
@@ -491,7 +497,7 @@ With `ArchiveProcessedLogs = $true` (the default), every `.htm` source file in `
 
 Files are only archived after the report is written — a failed run leaves them in place. To recover a file, just move it back out of `Archived Chats`.
 
-If you need to reprocess files already on disk (e.g. running with `-NoFetch -Date`), set `ArchiveProcessedLogs = $false` in `config.ps1` first, then restore it afterward.
+If you need to reprocess files already on disk (e.g. running with `-NoFetch -Date`), pass `-NoArchive` so the run leaves them where they are - no config edit needed. Setting `ArchiveProcessedLogs = $false` in `config.ps1` has the same effect permanently.
 
 ### Rotating runlogs
 
@@ -535,7 +541,7 @@ The system prompt sent to Claude lives in the `Invoke-ChatAnalysis` function. Ed
 
 ```powershell
 .\Register-DailyTask.ps1 -Unregister                      # remove the scheduled task
-[Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')   # remove the API key
+[Environment]::SetEnvironmentVariable('UT99_ANALYZER_API_KEY', $null, 'User')   # remove the API key
 Remove-Item -Recurse 'D:\Dropbox\Computing1\BatchFiles_Scripts\Claude Projects\UT99\UT99 ChatLog Analyzer\_system'
 ```
 
