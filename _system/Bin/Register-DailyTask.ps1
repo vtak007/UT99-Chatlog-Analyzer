@@ -83,6 +83,9 @@ $startDT   = if ($StartDate) {
     [datetime]::ParseExact($Time, 'HH:mm', $null)
 }
 $trigger   = New-ScheduledTaskTrigger -Daily -At $startDT
+# New-ScheduledTaskTrigger serializes -At as UTC ("...Z"), pinning the task to a fixed UTC time
+# that drifts an hour at every DST change. Overwrite with an offset-free local time.
+$trigger.StartBoundary = $startDT.ToString('yyyy-MM-ddTHH:mm:ss')
 $settings  = New-ScheduledTaskSettingsSet `
                 -StartWhenAvailable `
                 -RunOnlyIfNetworkAvailable `
