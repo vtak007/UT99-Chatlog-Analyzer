@@ -425,7 +425,7 @@ The output is saved to `_system\reports\chat-report-YYYY-MM-DD.html` and copied 
 
 `Register-DailyTask.ps1` creates a Windows Task Scheduler entry that:
 
-- Runs daily at the time you specify (default 08:00).
+- Runs daily at the time you specify (default 08:00), in **local time** — the trigger is not pinned to UTC, so it does not shift an hour when daylight saving starts or ends.
 - Starts on the date given by `-StartDate yyyy-MM-dd` (defaults to today if omitted).
 - Uses `pwsh.exe` (PowerShell 7) if installed, otherwise `powershell.exe` (5.1).
 - Runs as your current Windows user (so it has access to the saved WinSCP session and `UT99_ANALYZER_API_KEY` env var). By default it is registered as "Run whether user is logged on or not" (`Password` logon type, not elevated), so a run is not skipped if the machine rebooted and nobody has logged in. You are prompted for your Windows password, which Task Scheduler stores, and replacing an existing task may need an elevated (Administrator) PowerShell. Pass `-InteractiveOnly` to register the old behaviour instead (runs only while you are logged on; no password needed). Changing your Windows password later requires re-registering the task.

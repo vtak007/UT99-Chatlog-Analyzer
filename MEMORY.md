@@ -32,6 +32,10 @@ See `CLAUDE.md` for project-specific details.
   unknown. Fixed by re-saving the password in WinSCP. Had this gone unnoticed the 10/5 07:00 run would
   have failed the same way. Also saw one transient Anthropic API 400 (identical request succeeded on
   rerun; cause unknown — the script does not log the API error body).
+- 2026-11-12 — Scheduled task drifted an hour at DST changes. Cause: on this machine
+  `New-ScheduledTaskTrigger -At` serializes `StartBoundary` as UTC (`...Z`), so the registered task
+  was pinned to a fixed UTC offset instead of local time. Fixed in `Register-DailyTask.ps1` by
+  overwriting `$trigger.StartBoundary` with an offset-free local `yyyy-MM-ddTHH:mm:ss` string.
 
 ## RULED-OUT THEORIES
 
@@ -70,6 +74,9 @@ See `CLAUDE.md` for project-specific details.
 ## CHANGE LOG
 
 Newest first. Format: `- YYYY-MM-DD — what changed`.
+
+- 2026-11-12 — `Register-DailyTask.ps1` registers a local-time trigger (no UTC pin), so the task no
+  longer shifts an hour at DST changes (`fix/trigger-local-time`). Live task patched to match.
 
 - 2026-10-31 — Docs caught up with the two `fix/analyzer-own-api-key-var` commits: README and `Register-DailyTask.ps1` help now name `UT99_ANALYZER_API_KEY`, and `-NoArchive` is documented in the flags table, examples and the Archived Chats section. Gitignored the local `UT99 Chatlog Analyzer.xml` task export.
 - 2026-10-31 — Added `-NoArchive` to the main script: skips moving processed `.htm` logs to `Archived Chats` so a multi-day `-NoFetch -Date` backfill can reuse the same source files.
